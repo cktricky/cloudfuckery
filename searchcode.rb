@@ -9,8 +9,8 @@ class Parser
     opt_parser = OptionParser.new do |opts|
       opts.banner = "Usage: example.rb [options]"
 
-      opts.on("-oORG REPO URL", "--name=ORG REPO URL", "Organization's GitHub Link, Ex: https://github.com/twitter") do |o|
-        args.org_url = o
+      opts.on("-nOrgName", "--name=Org Name", "IMPORTANT: Organization's name as seen on GitHub") do |n|
+        args.name = n
       end
 
       opts.on("-h", "--help", "Prints available options") do
@@ -27,6 +27,6 @@ end
 
 args = ARGV.empty? ? %w{--help} : ARGV
 options = Parser.parse args
-p options
+p options if args.include?('--help')
 
 
