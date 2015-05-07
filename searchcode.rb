@@ -3,17 +3,25 @@ require 'json'
 require 'open-uri'
 
 
-Options = Struct.new(:name)
+Options = Struct.new(:name, :username, :password)
 
 class Parser
   def self.parse(options)
-    args = Options.new("world")
+    args = Options.new("parser")
 
     opt_parser = OptionParser.new do |opts|
-      opts.banner = "Usage: example.rb [options]"
+      opts.banner = "Usage: searchcode.rb [options]"
 
       opts.on("-nOrgName", "--name=Org Name", "IMPORTANT: Organization's name as seen on GitHub") do |n|
         args.name = n
+      end
+      
+      opts.on("-uUsername", "--username=GitHub Username", "GitHub Username") do |u|
+        args.username = u
+      end
+      
+      opts.on("-pPassword", "--password=GitHub Password", "GitHub Password") do |p|
+        args.password = p
       end
 
       opts.on("-h", "--help", "Prints available options") do
@@ -75,17 +83,42 @@ end
 
 class GetOrgMembers
   
-  attr_reader :name
+  attr_reader :name, :repos_list, :username, :password
   
   def initialize(options=Struct.new)
     @name = options.name
+    @username = options.username
+    @password = options.password 
+    @repos_list = []
   end
   
   def fetch
-    @members = JSON.parse(open("https://api.github.com/orgs/#{name}/members").read)
+    @members = JSON.parse(open("https://api.github.com/orgs/#{name}/members", http_basic_authentication: [username, password] ).read)
   rescue OpenURI::HTTPError => e
-    e
+    case e.to_s
+    when "403 Forbidden"
+      puts "Receiving a 403 so it is likely API restrictions, gonna need github creds (see help)"
+    when "404 Not Found"
+      puts "Receiving a 404 so.....Does that org exist? (double check the name)"
+    else  
+      puts e
+    end
+    exit
   end
+  
+  def retrieve_member_repo_list(member)
+    repos_url = member['repos_url']
+    begin
+      repo_info = JSON.parse(open(repos_url, http_basic_authentication: [username, password]).read)
+    rescue OpenURI::HTTPError => e
+      puts "returned #{e} for the following repo url: #{repos_url}"
+      return
+    end
+    repo_info.each do | repo| 
+      repos_list << repo['clone_url']
+    end 
+  end 
+  
   
   def print_relevant_details
     if @members.nil?
@@ -94,6 +127,7 @@ class GetOrgMembers
     end
     @members.each do |member|
       PrintTable.new(member)
+      retrieve_member_repo_list(member)
     end
   end
 
@@ -106,5 +140,6 @@ p options if args.include?('--help')
 members = GetOrgMembers.new(options)
 members.fetch
 members.print_relevant_details
+puts members.repos_list
 
 
