@@ -29,13 +29,16 @@ end
 
 class PrintTable
   
+  attr_reader :hash, :length_info
   
   def initialize(hash={})
-    length_info = get_length_values(hash)
-    make_titles(length_info)
+    @hash = hash
+    @length_info = get_length_values
+    make_titles
+    print_user_details
   end
   
-  def get_length_values(hash={})
+  def get_length_values
     key_lengths = []
     val_lengths = []
     hash.each do |key, value|
@@ -47,12 +50,25 @@ class PrintTable
     }
   end
   
-  def make_titles(length_info={})
-    title = ""
-    title << "Category\n" 
-    title << "=" * 8
-    title << ' ' * (length_info[:key_length] - 8 + 1)
-    puts title.inspect
+  def make_titles
+    title = ''
+    title << "User" + ' ' * length_info[:key_length]
+    title << "Details" + ' ' * length_info[:value_length]
+    title << "\n" + '=' * 4
+    title << " " * (length_info[:key_length])
+    title << '=' * 7 + "\n\n"
+    puts title
+  end
+  
+  def print_user_details
+    detail = ""
+    hash.each do |key, value| 
+      detail << key + ' ' * (length_info[:key_length] - key.length + 4)
+      detail << value.to_s
+      detail << "\n"
+    end
+    detail << "\n"
+    puts detail
   end
   
 end
