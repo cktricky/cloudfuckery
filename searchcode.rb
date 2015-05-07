@@ -1,6 +1,7 @@
 require 'optparse'
 require 'json'
 require 'open-uri'
+require 'cgi'
 
 
 Options = Struct.new(:name, :username, :password)
@@ -116,6 +117,9 @@ class GetOrgMembers
     end
     repo_info.each do | repo| 
       repos_list << repo['clone_url']
+      repos_list << repo['git_url']
+      repos_list << repo['ssh_url']
+      repos_list << repo['svn_url']
     end 
   end 
   
@@ -133,6 +137,61 @@ class GetOrgMembers
 
 end
 
+class SearchEngine
+  
+  attr_reader :list_of_search_results
+  
+  def initialize
+    @list_of_search_results = {}
+    run
+  end
+  
+  def run
+    collector
+  end
+  
+  def collector
+    keywords.each do |keyword|
+      list = []
+      keyword = CGI::escape(keyword)
+      (0..49).each do |i|
+        url = "https://searchcode.com/api/codesearch_I/?q=#{keyword}&p=#{i}&src=2&per_page=100"
+        response = JSON.parse(open(url).read)
+        break if response["results"].empty?
+        list << response["results"].inject([]) do |arr, result|
+          arr << result["repo"]
+          arr
+        end
+      end
+      list_of_search_results[keyword.to_sym] = list.flatten!
+    end
+  end
+  
+  def keywords
+    [
+      "api_token"
+    ]
+  end    
+  
+end
+
+class FindMatch
+  
+  def initialize(search_result_list={}, member_repos=[])
+    puts "No Results...thats strange" and exit if (search_result_list.empty? || member_repos.empty?)
+    member_repos.each do |repo_url|
+      matches = search_result_list.values.flatten.include?(repo_url)
+      yay(repo_url, search_result_list.key(repo_url) ) if matches
+    end
+  end
+  
+  def yay(repo='', keyword='')
+    puts "[woot] Found this repo #{repo} which has a keyword of #{keyword}"
+  end
+
+end
+
+
 args = ARGV.empty? ? %w{--help} : ARGV
 options = Parser.parse args
 p options if args.include?('--help')
@@ -140,6 +199,8 @@ p options if args.include?('--help')
 members = GetOrgMembers.new(options)
 members.fetch
 members.print_relevant_details
-puts members.repos_list
+member_repos = members.repos_list
+search = SearchEngine.new
+matches = FindMatch.new(search.list_of_search_results, member_repos)
 
 
