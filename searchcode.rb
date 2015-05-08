@@ -2,7 +2,7 @@ require 'optparse'
 require 'json'
 require 'open-uri'
 require 'cgi'
-
+require 'colorize'
 
 Options = Struct.new(:name, :username, :password)
 
@@ -180,13 +180,19 @@ class FindMatch
   def initialize(search_result_list={}, member_repos=[])
     puts "No Results...thats strange" and exit if (search_result_list.empty? || member_repos.empty?)
     member_repos.each do |repo_url|
-      matches = search_result_list.values.flatten.include?(repo_url)
-      yay(repo_url, search_result_list.key(repo_url) ) if matches
+    match = search_result_list.inject([]) do |arr,(key,value)| 
+      if value.include?(repo_url)
+        arr << [key, repo_url]
+      end
+      arr.flatten
+    end
+    yay(match) if not match.empty?
     end
   end
   
-  def yay(repo='', keyword='')
-    puts "[woot] Found this repo #{repo} which has a keyword of #{keyword}"
+  def yay(match=[])
+    keyword, repo = match
+    puts "[woot] Found this repo #{repo} which has a keyword of \'#{keyword}\'".green
   end
 
 end
